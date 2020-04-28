@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Dumper
 {
@@ -10,5 +11,10 @@ namespace Dumper
         public string[] Some { get; set; }
         public int Out { get; set; }
         public bool IsIt { get; set; }
+        public List<Fixture> Internal { get; set; }
+        public decimal Decimal { get; set; }
+        public TimeSpan Time { get; set; }
+        public DateTimeKind Enum { get; set; }
+        public Guid Id { get; set; }
     }
 }

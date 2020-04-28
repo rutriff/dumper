@@ -1,19 +1,22 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace Dumper
 {
     public class Serializer
     {
+        private readonly string _separator = $",{Environment.NewLine}";
+
         public string Code<T>(T target) where T : class, new()
         {
             var type = target.GetType();
             return "var " + type.Name + " = new " + type.FullName + " { " + Process(target) + " };";
         }
 
-        private string Process<T>(T obj)
+        private string Process(object obj)
         {
             if (obj == null)
             {
@@ -33,10 +36,11 @@ namespace Dumper
 
                 string format;
 
-                if (typeof(IEnumerable).IsAssignableFrom(property.PropertyType) &&
-                    property.PropertyType != typeof(string))
+                var propertyType = property.PropertyType;
+                
+                if (typeof(IEnumerable).IsAssignableFrom(propertyType) && propertyType != typeof(string))
                 {
-                    var arrayCode = new StringBuilder("new " + property.PropertyType.FullName + " {");
+                    var arrayCode = new StringBuilder("new " + PrepareClassCreating(propertyType) + " {");
                     var lines = new List<string>();
 
                     foreach (var array in (IEnumerable) value)
@@ -44,7 +48,7 @@ namespace Dumper
                         lines.Add(Format(array));
                     }
 
-                    arrayCode.AppendLine(string.Join($",{System.Environment.NewLine}", lines));
+                    arrayCode.AppendLine(string.Join(_separator, lines));
                     arrayCode.AppendLine("}");
                     format = arrayCode.ToString();
                 }
@@ -56,7 +60,17 @@ namespace Dumper
                 code.Add($"{property.Name} = {format}");
             }
 
-            return string.Join($",{System.Environment.NewLine}", code);
+            return string.Join(_separator, code);
+        }
+
+        private static string PrepareClassCreating(Type propertyType)
+        {
+            if (propertyType.IsGenericType)
+            {
+                return $"{propertyType.FullName.Split('`')[0]}<" + string.Join(", ", propertyType.GetGenericArguments().Select(a => a.FullName)) + ">";
+            }
+            
+            return propertyType.FullName;
         }
 
         private bool IsDefault(object value)
@@ -85,38 +99,37 @@ namespace Dumper
                 return "null";
             }
 
-            if (obj is string)
+            switch (obj)
             {
-                return $"\"{obj}\"";
+                case string _:
+                    return $"\"{obj}\"";
+                case decimal decimalValue:
+                    return $"{decimalValue:F}M";
+                case bool _:
+                    return $"{obj.ToString()?.ToLowerInvariant()}";
+                case DateTime dateTime:
+                    return $"System.DateTime.Parse(\"{dateTime:u}\")";
+                case TimeSpan _:
+                    return $"System.TimeSpan.Parse(\"{obj.ToString()}\")";
+                case Guid _:
+                    return $"System.Guid.Parse(\"{obj.ToString()}\")";
             }
 
-            if (obj is decimal decimalValue)
+            var type = obj.GetType();
+            
+            if (type.IsEnum)
             {
-                return $"{decimalValue:F}M";
+                return $"{type.FullName}.{obj.ToString()}";
             }
 
-            if (obj is bool)
-            {
-                return $"{obj.ToString()?.ToLowerInvariant()}";
-            }
-
-            if (obj is DateTime dateTime)
-            {
-                return $"new System.DateTime({dateTime.Year}, {dateTime.Month}, {dateTime.Day}, {dateTime.Hour}, {dateTime.Minute}, {dateTime.Second}, {dateTime.Millisecond}, System.DateTimeKind.{dateTime.Kind})";
-            }
-
-            if (obj.GetType().IsEnum)
-            {
-                return $"{obj.GetType().FullName}.{obj.ToString()}";
-            }
-
-            if (obj.GetType().IsValueType)
+            if (type.IsValueType)
             {
                 return obj.ToString();
             }
 
             var data = Process(obj);
-            return $"new " + obj.GetType().FullName + " {" + data + "}";
+            
+            return $"new " + PrepareClassCreating(type) + " {" + data + "}";
         }
     }
 }
