@@ -108,7 +108,7 @@ namespace Dumper
                 case bool _:
                     return $"{obj.ToString()?.ToLowerInvariant()}";
                 case DateTime dateTime:
-                    return $"System.DateTime.Parse(\"{dateTime:u}\")";
+                    return $"System.DateTime.Parse(\"{dateTime:s}\")";
                 case TimeSpan _:
                     return $"System.TimeSpan.Parse(\"{obj.ToString()}\")";
                 case Guid _:
