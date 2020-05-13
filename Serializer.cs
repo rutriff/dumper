@@ -104,7 +104,7 @@ namespace Dumper
                 case string _:
                     return $"\"{obj}\"";
                 case decimal decimalValue:
-                    return $"{decimalValue:F}M";
+                    return $"{decimalValue.ToString(CultureInfo.InvariantCulture)}M";
                 case bool _:
                     return $"{obj.ToString()?.ToLowerInvariant()}";
                 case DateTime dateTime:
