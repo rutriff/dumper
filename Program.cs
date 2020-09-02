@@ -8,6 +8,7 @@ namespace Dumper
         static void Main(string[] args)
         {
             var dumper = new Serializer();
+            var assertGenerator = new AssertGenerator();
 
             var target = new Fixture
             {
@@ -42,6 +43,9 @@ namespace Dumper
 
             var code = dumper.Code(target);
             Console.WriteLine(code);
+
+            var asserts = assertGenerator.Generate(target);
+            Console.WriteLine(asserts);
         }
         
         
