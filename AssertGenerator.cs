@@ -11,20 +11,20 @@ namespace Dumper
     {
         private readonly string _separator = $"\r\n";
 
-        public string Generate<T>(T actual) where T : class, new()
+        public string Generate<T>(T actual, bool generateEmptyValueAsserts = false) where T : class, new()
         {
             var sb = new StringBuilder();
 
             sb.AppendLine($"{nameof(actual)}.Should().NotBeNull();");
 
-            var processed = Process(actual, nameof(actual));
+            var processed = Process(actual, nameof(actual), generateEmptyValueAsserts);
             processed = StripDoubleEmptyLines(processed);
             sb.AppendLine(processed);
 
             return sb.ToString();
         }
 
-        private string Process(object obj, string path)
+        private string Process(object obj, string path, bool generateEmptyValueAsserts)
         {
             if (obj == null)
             {
@@ -37,6 +37,10 @@ namespace Dumper
             foreach (var property in obj.GetType().GetProperties())
             {
                 var value = property.GetValue(obj);
+                if (!generateEmptyValueAsserts && IsDefault(value))
+                {
+                    continue;
+                }
 
                 var propertyType = property.PropertyType;
 
@@ -69,7 +73,7 @@ namespace Dumper
                             }
                             else
                             {
-                                var arrayItemCode = Process(firstItem, propertyNameLower);
+                                var arrayItemCode = Process(firstItem, propertyNameLower, generateEmptyValueAsserts);
                                 subItems.Add(arrayItemCode);
                             }
                         }
@@ -103,7 +107,7 @@ namespace Dumper
                                 itemPath = propertyNameLower;
                             }
 
-                            var data = Process(value, itemPath);
+                            var data = Process(value, itemPath, generateEmptyValueAsserts);
                             if (!string.IsNullOrEmpty(data))
                             {
                                 if (addData.Any())
@@ -165,6 +169,24 @@ namespace Dumper
             }
 
             return null;
+        }
+        private bool IsDefault(object value)
+        {
+            if (value == null)
+            {
+                return true;
+            }
+
+            var type = value.GetType();
+
+            if (type.IsValueType)
+            {
+                var defaultValue = Activator.CreateInstance(type);
+                // ReSharper disable once PossibleNullReferenceException
+                return defaultValue.Equals(value);
+            }
+
+            return false;
         }
 
         public static string GenerateVarName(string str)
