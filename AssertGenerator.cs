@@ -91,9 +91,27 @@ namespace Dumper
                         else
                         {
                             var itemPath = $"{path}.{property.Name}";
+                            var addData = new List<string>();
+                            if (propertyType == typeof(object))
+                            {
+                                var objPath = path.Split(".").Last();
+
+                                var propertyNameLower = GenerateVarName($"{objPath}{property.Name}");
+                                var newVar = $"var {propertyNameLower} = ({value.GetType().FullName}){itemPath};";
+
+                                addData.Add(newVar);
+                                itemPath = propertyNameLower;
+                            }
+
                             var data = Process(value, itemPath);
                             if (!string.IsNullOrEmpty(data))
                             {
+                                if (addData.Any())
+                                {
+                                    code.AddRange(addData);
+                                }
+
+                                code.Add($"{itemPath}.Should().NotBeNull();");
                                 code.Add(data);
                             }
                         }
@@ -152,6 +170,10 @@ namespace Dumper
         public static string GenerateVarName(string str)
         {
             var name = str.Substring(0, 1).ToLower() + (str.Length > 1 ? str.Substring(1) : "");
+            if (name.EndsWith("es"))
+            {
+                return $"{name.TrimEnd('e', 's')}";
+            }
             if (name.EndsWith("s"))
             {
                 return $"{name.TrimEnd('s')}";
